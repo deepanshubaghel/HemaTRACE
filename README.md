@@ -1,213 +1,277 @@
-# HemaTRACE
+<a id="top"></a>
 
-**A modular, GitHub-ready implementation of the complete HemaTRACE MIMIC-IV research pipeline.**
+<h1 align="center">🩸 HemaTRACE</h1>
 
-HemaTRACE predicts future hemoglobin and anemia outcomes for adult ICU stays using **measurements collected during ICU hours 0–24** to predict **outcomes observed during ICU hours 24–72**. This repository is a structural refactor of the supplied single-file research implementation; it keeps the original algorithms, data rules, training configurations, thresholds, model types, study stages, filenames, and plotting behavior. It also retains the originally appended **deep-learning model comparison**, **full ablation study**, **model/pipeline complexity analysis**, and **manuscript-ready plotting extensions**.
+<h3 align="center">Temporal Hemoglobin Forecasting &amp; Anemia Risk Assessment in Critical Care</h3>
 
-> **Research software only.** The code has not been clinically validated and should not be used for treatment, transfusion, or patient-management decisions. This repository does **not** include MIMIC-IV data, model checkpoints, trained weights, or empirical results.
+<p align="center"><strong>A reproducible, multimodal, multitask deep-learning research framework built around MIMIC-IV intensive care data.</strong></p>
 
-## Contents
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+" />
+  <img src="https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/Tasks-Regression%20%2B%20Classification-6055A5?style=flat-square" alt="Regression and classification" />
+  <img src="https://img.shields.io/badge/Dataset-MIMIC--IV%20%7C%20Credentialed%20Access-0A7E8C?style=flat-square" alt="MIMIC-IV credentialed access" />
+  <img src="https://img.shields.io/badge/License-MIT-2E8B57?style=flat-square" alt="MIT license" />
+  <img src="https://img.shields.io/badge/Status-Research%20Software-555555?style=flat-square" alt="Research software" />
+</p>
 
-- [1. Project layout](#1-project-layout)
-- [2. Pipeline design](#2-pipeline-design)
-- [3. Prerequisites](#3-prerequisites)
-- [4. Installation](#4-installation)
-- [5. Input dataset layout](#5-input-dataset-layout)
-- [6. How to run](#6-how-to-run)
-- [7. Configuration](#7-configuration)
-- [8. Model families](#8-model-families)
-- [9. Evaluation and generated outputs](#9-evaluation-and-generated-outputs)
-- [10. Reproducibility and leakage control](#10-reproducibility-and-leakage-control)
-- [11. Tests and code maintenance](#11-tests-and-code-maintenance)
-- [12. Troubleshooting](#12-troubleshooting)
-- [13. Dataset](#13-data-access-citation-and-use)
-  
-## 1. Project layout
+<p align="center">
+  <a href="#quick-start">🚀 Quick Start</a> ·
+  <a href="#methodology">🧠 Method</a> ·
+  <a href="#dataset-access">🧬 Dataset</a> ·
+  <a href="#evaluation-protocol">📊 Evaluation</a> ·
+  <a href="#documentation">📚 Documentation</a> ·
+  <a href="#citation">📖 Citation</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/deepanshubaghel/HemaTRACE">Source Code</a> ·
+  <a href="https://physionet.org/content/mimiciv/">MIMIC-IV on PhysioNet</a> ·
+  <a href="https://mimic.mit.edu/">Official MIMIC Documentation</a>
+</p>
+
+---
+
+> [!IMPORTANT]
+> **Research use only.** HemaTRACE is a research implementation—not a validated clinical decision-support system or medical device. It must **not** be used independently to guide patient treatment, transfusion, or clinical management. This repository does **not** distribute MIMIC-IV records, patient-level derivatives, model checkpoints, trained weights, or empirical benchmark results.
+
+## ✨ At a glance
+
+| 🔬 Research dimension | HemaTRACE design |
+|:--|:--|
+| **Clinical setting** | Adult intensive care unit (ICU) stays |
+| **Observation → prediction** | **0–24 h** ICU measurements → **24–72 h** future hemoglobin outcomes |
+| **Prediction objectives** | Minimum future Hb (regression), severe anemia risk, new-onset anemia risk |
+| **Temporal representation** | **6 × 4-hour bins** of values, observation masks, elapsed-time information, and counts |
+| **Core model** | GRU-based temporal encoder + attention + static branch + multitask prediction heads |
+| **Research comparisons** | Tabular baselines, 9 deep-learning comparator architectures, retrained component ablations |
+| **Analysis** | Discrimination, regression accuracy, calibration, bootstrap uncertainty, subgroups, explainability, and model complexity |
+| **Reproducibility** | Patient-disjoint train/validation/test splits (**70 / 10 / 20** at the subject level) |
+
+<details>
+<summary><b>📑 Navigate this README</b></summary>
+
+- [Overview](#overview)
+- [Research problem and prediction tasks](#research-problem-and-prediction-tasks)
+- [Methodology](#methodology)
+- [Research experiments and model families](#research-experiments-and-model-families)
+- [Quick start](#quick-start)
+- [Dataset access](#dataset-access)
+- [Repository structure](#repository-structure)
+- [Configuration](#configuration)
+- [Execution and experiment workflow](#execution-and-experiment-workflow)
+- [Evaluation protocol](#evaluation-protocol)
+- [Output artifacts](#output-artifacts)
+- [Reproducibility and limitations](#reproducibility-and-limitations)
+- [Tests and troubleshooting](#tests-and-troubleshooting)
+- [Citation](#citation)
+- [License, ethics, and responsible use](#license-ethics-and-responsible-use)
+- [Documentation](#documentation)
+
+</details>
+
+---
+
+## Overview
+
+**Abstract.** **HemaTRACE** is a research framework for temporal hemoglobin forecasting and anemia risk prediction in critical care. Using clinical observations from the first **24 hours of an ICU stay**, HemaTRACE models future hemoglobin outcomes over **hours 24–72**. The framework integrates laboratory results, bedside physiological measurements, transfusion-related events, and eligible static clinical features using an attention-based temporal encoder and multitask prediction heads.
+
+HemaTRACE jointly studies **three complementary research endpoints**: future minimum hemoglobin concentration, severe anemia risk, and new-onset anemia among eligible stays. A complete experimental pipeline supports conventional machine-learning baselines, neural architecture comparisons, onset-focused fine-tuning, calibration and fusion, systematic ablations, statistical analysis, interpretability, and reproducibility assessments.
+
+**Research codebase.** This repository contains the **HemaTRACE research implementation**, from raw MIMIC-IV data processing to model development, experimental comparisons, statistical evaluation, and research figures. Its methods, operational outcome definitions, training settings, and reporting conventions are documented below to support transparent, reproducible research.
+
+### 🎯 What this repository provides
+
+- **🧬 End-to-end data processing:** curated MIMIC-IV item mappings, cohort construction, chunked event extraction, and temporal/tabular feature generation.
+- **🧠 Multitask sequence learning:** GRU-attention modeling with a static-feature branch and three prediction objectives.
+- **🔁 Controlled experiments:** subject-level splits, tabular baselines, onset specialization, fusion/calibration, nine deep-learning comparators, and component ablations.
+- **📊 Publication-oriented analysis:** metrics, uncertainty estimates, statistical comparisons, subgroup analysis, XAI figures, and structured manuscript outputs.
+- **🧰 Reproducible software:** a documented Python package, a single experiment entry point, dependency specifications, automated smoke tests, and technical reference guides.
+
+---
+
+## Research problem and prediction tasks
+
+### ⏳ Prediction horizon
+
+HemaTRACE uses the **first 24 hours** after ICU admission as the observation period and the following **24–72 hours** as the future outcome period.
 
 ```text
-hematrace/
-├── README.md
-├── main.py                         # Run the complete original workflow
-├── pyproject.toml                  # Editable install + CLI entry point
-├── requirements.txt                # Required runtime dependencies
-├── requirements-optional.txt       # Optional statistical/boosting dependencies
-├── requirements-dev.txt            # Test dependencies
-├── Makefile
-├── MANIFEST.in
-├── .gitignore
-├── Dataset/
-│   └── Mimic4/
-│       ├── hosp/                   # Place raw MIMIC-IV hospital CSVs here
-│       └── icu/                    # Place raw MIMIC-IV ICU CSVs here
-├── src/
-│   └── hematrace/
-│       ├── __init__.py
-│       ├── __main__.py              # python -m hematrace
-│       ├── config.py                # Original CFG, run directories
-│       ├── utils.py                 # Helpers and random seeding
-│       ├── metrics.py               # Regression and classification metrics
-│       ├── optional_dependencies.py # Optional imports with existing fallbacks
-│       ├── pipeline.py              # The complete main() orchestration
-│       ├── data/
-│       │   ├── item_maps.py         # Curated MIMIC itemid mappings
-│       │   ├── cohort.py            # Raw file audit + ICU cohort
-│       │   ├── events.py            # Chunked event extraction
-│       │   └── features.py          # Targets, aggregate features, NPZ, splits
-│       ├── models/
-│       │   ├── tabular.py           # Tabular learners
-│       │   ├── temporal.py          # HemaTRACE GRU-attention multitask model
-│       │   └── fusion.py            # Calibration and validation-trained fusion
-│       ├── evaluation/
-│       │   ├── statistics.py        # Metrics, bootstrap, tests, subgroups
-│       │   └── explainability.py    # XAI and original plots
-│       ├── studies/
-│       │   └── ablation.py          # Full controlled component ablations
-│       ├── comparisons/
-│       │   └── deep_learning.py     # All DL baselines + manuscript overrides
-│       └── reports/
-│           └── complexity.py       # Runtime/model complexity and manifests
-├── scripts/
-│   └── check_data.py               # Filename-only raw dataset check
-├── tests/                          # Synthetic smoke tests; no clinical data
-└── docs/
-    ├── ARCHITECTURE.md
-    ├── DATA_AND_TARGETS.md
-    ├── REPRODUCIBILITY.md
-
+ICU admission                                                  Follow-up
+     │                                                             │
+  t = 0 h                       t = 24 h                        t = 72 h
+     │─────────────────────────────│────────────────────────────────│
+     │      OBSERVED INPUT         │        FUTURE OUTCOME          │
+     │   clinical measurements     │    hemoglobin observations    │
+     │                             │                                │
+     │  [0–4] [4–8] [8–12]        │     ↓ minimum observed Hb     │
+     │ [12–16] [16–20] [20–24]    │     ↓ severe-anemia label     │
+     │       6 × 4 h bins          │     ↓ new-onset-anemia label  │
+     └─────────────────────────────┴────────────────────────────────┘
+            Model inputs                  Prediction targets
 ```
 
-`HemaTrace_results/` is created automatically when the pipeline modules are imported and is excluded from Git. No original output datasets or previously trained models are loaded by the primary pipeline.
+**Notation.** For ICU stay $i$, let $\mathcal H_i^{[a,b)}$ denote the available hemoglobin measurements recorded from hour $a$ (inclusive) to hour $b$ (exclusive), relative to ICU admission.
 
-## 2. Pipeline design
+### 🧪 Three prediction objectives
 
-```text
-Raw MIMIC-IV hosp/ + icu/ CSVs
-      |
-      v
-Required-file audit --> age/ICU-stay cohort --> curated lab/vital/RBC mappings
-      |
-      v
-Filtered labevents (0–72 h) + chartevents (0–24 h)
-                              + inputevents (0–24 h)
-      |
-      +--> future hemoglobin targets (24–72 h)
-      +--> observed Hb / aggregate features (0–24 h)
-      +--> 4-hour temporal tensors (6 bins)
-      |
-      v
-Subject-level train / validation / test (70% / 10% / 20%)
-      |
-      +--> tabular baselines
-      +--> HemaTRACE GRU-attention regression + two classification heads
-      +--> onset-specialized fine-tuning
-      +--> calibration / validation-trained fusion
-      +--> component ablation re-training
-      +--> nine deep-learning comparator architectures
-      |
-      v
-Test metrics + confidence intervals + paired tests + subgroup analysis
-      + decision curves + XAI + manuscript plots + PDFs + complexity manifests
+| Head | Formal research definition | Objective |
+|:--|:--|:--|
+| **① Future minimum Hb** | $y_i^{\mathrm{Hb}} = \min\mathcal H_i^{[24,72)}$ | Continuous regression |
+| **② Severe anemia** | $y_i^{\mathrm{sev}} = \mathbb{1}[y_i^{\mathrm{Hb}} < 8.0]$ | Binary classification |
+| **③ New-onset anemia** | Among stays without observed anemia in hours 0–24, predict whether future minimum Hb falls below the study's sex-specific threshold | Eligible-subset binary classification |
+
+For the third objective, the study uses the following hemoglobin thresholds for early and future anemia:
+
+$$
+\tau_i =
+\begin{cases}
+13.0, & \text{recorded male},\\
+12.0, & \text{recorded female}.
+\end{cases}
+$$
+
+- **New-onset eligibility:** an observed early Hb measurement is required, and the early minimum Hb must be **at or above** $\tau_i$.
+- **Future new-onset label:** within the eligible subset, future anemia is defined by $y_i^{\mathrm{Hb}} < \tau_i$.
+- **Missingness is not a negative label:** if early hemoglobin is unavailable, the new-onset outcome is undefined and excluded from its eligible subset.
+- **Cohort inclusion:** at least one hemoglobin observation is required in the future **24–72 h** window to construct these targets.
+
+> [!NOTE]
+> These are **operational thresholds used by HemaTRACE** for its research tasks; they should not be interpreted as universally applicable clinical diagnostic criteria. See [`docs/DATA_AND_TARGETS.md`](docs/DATA_AND_TARGETS.md) for the complete cohort and label definitions.
+
+---
+
+## Methodology
+
+### 🧭 End-to-end research pipeline
+
+```mermaid
+flowchart TD
+    A[(MIMIC-IV<br/>hosp/ + icu/ CSV files)] --> B[Raw-file audit + adult ICU cohort]
+    B --> C[Curated laboratory / vital / RBC item maps]
+    C --> D[Chunked event extraction]
+    D --> E[0–24 h feature construction]
+    D --> F[24–72 h future Hb targets]
+    E --> G[Tabular aggregates + 6-bin temporal tensors]
+    F --> H[Subject-level train / val / test split]
+    G --> H
+    H --> I[Tabular baselines]
+    H --> J[HemaTRACE temporal multitask model]
+    H --> K[9 neural-network comparators]
+    J --> L[Onset-specialized fine-tuning]
+    I --> M[Validation-based calibration + fusion]
+    J --> M
+    L --> M
+    J --> N[Component ablations]
+    K --> O[Held-out evaluation]
+    N --> O
+    M --> O
+    O --> P[Metrics · confidence intervals · statistical tests]
+    P --> Q[Subgroups · XAI · figures · manuscript artifacts]
 ```
 
-The main prediction targets are:
+HemaTRACE starts from **raw MIMIC-IV CSV tables** and produces the cohort, features, models, and evaluation artifacts in a single research workflow. The diagram groups stages conceptually; the exact execution order is defined by [`src/hematrace/pipeline.py`](src/hematrace/pipeline.py). Each full run creates its own timestamped output directory.
 
-| Task | Source-derived definition |
-| --- | --- |
-| Future minimum Hb | Minimum available hemoglobin in ICU hours **24–72** (regression) |
-| Future severe anemia | Future minimum Hb **< 8.0** (binary classification) |
-| New-onset anemia | Anemia in hours 24–72 among stays **without observed anemia in hours 0–24**; threshold is Hb **< 13.0** for recorded male, **< 12.0** for recorded female |
+### 🧠 HemaTRACE temporal architecture (conceptual)
 
-The code requires an observed future Hb value to include a stay in the modeled cohort. Missing early Hb does **not** qualify a stay as new-onset-negative. See [Data and targets](docs/DATA_AND_TARGETS.md).
+```mermaid
+flowchart LR
+    subgraph TS[Temporal branch: 0–24 h]
+      V[Clinical values] --> E[Temporal representation]
+      M[Observation masks] --> E
+      D[Time-since-observation] --> E
+      C[Event counts] --> E
+      E --> G[GRU temporal encoder]
+      G --> A[Attention pooling]
+    end
+    subgraph ST[Static branch]
+      S[Available static clinical features] --> P[Static feature encoder]
+    end
+    A --> F[Shared representation]
+    P --> F
+    F --> H1[Minimum future Hb<br/>Regression]
+    F --> H2[Severe-anemia risk<br/>Classification]
+    F --> H3[New-onset anemia risk<br/>Masked classification]
+```
 
-## 3. Prerequisites
+*Conceptual diagram; consult the source for implementation-level layer details, residual connections, and the training/fusion procedures.*
 
-- Python **3.10+** with compatible library wheels (recommended: 3.11 or 3.12).
-- An environment with enough disk space and RAM to process large MIMIC-IV CSVs and preserve intermediate events/arrays; a CUDA GPU is highly recommended for full experiments. CPU execution is supported by the underlying PyTorch branches, but can be very slow.
-- Authorized access to the **MIMIC-IV** raw dataset and its data-use requirements. Do not include hospital data in a public GitHub repository.
-- The exact raw CSV structure below. Compressed `.csv.gz` inputs are **not** used by this unchanged implementation; decompress them to `.csv` first.
+### 🧱 Features and representations
 
-## 4. Installation
+| Feature source | Raw source | Modeled information |
+|:--|:--|:--|
+| **Laboratory** | `hosp/labevents.csv` | Hb, hematocrit, red-cell indices, platelets, WBC, renal/coagulation measures, and other curated labs |
+| **Physiology** | `icu/chartevents.csv` | Heart rate, blood pressures, respiratory rate, SpO₂, temperature, GCS components |
+| **Treatment** | `icu/inputevents.csv` | Curated RBC transfusion count and amount features |
+| **Static** | Cohort/admission tables and early derived variables | Available demographic and admission characteristics plus permitted early observations |
 
-Execute these commands from the **repository root**:
+For temporal modeling, each 4-hour bin contains **observed values**, **observation masks**, **time-since-observation information**, and **measurement counts**. Tabular models use 0–24-hour aggregate statistics and additional selected predictors. Curated `itemid` mappings and feature definitions are implemented in [`src/hematrace/data/`](src/hematrace/data/).
+
+---
+
+## Research experiments and model families
+
+### 🔍 Models implemented
+
+| Experiment family | Included models / procedures | Research role |
+|:--|:--|:--|
+| **Tabular baselines** | Ridge/logistic regression and gradient-boosting baselines, with optional LightGBM/XGBoost backends | Conventional ML reference |
+| **HemaTRACE-Temporal** | GRU + attention + static branch + multitask heads | Main temporal framework |
+| **HemaTRACE-OnsetSpecialized** | Fine-tuning oriented toward the eligible new-onset objective | Outcome specialization |
+| **HemaTRACE-Fusion** | Temperature calibration and validation-trained prediction fusion | Probability calibration / combination |
+| **Deep-learning comparators** | Static MLP, flattened temporal MLP, 1D CNN, LSTM, GRU, BiGRU, attention-based BiLSTM, Transformer encoder, TCN | Neural architecture comparisons |
+| **Component ablations** | Retrained variants of input channels, attention, branches, and selected feature groups | Design sensitivity analysis |
+
+**Neural comparator architectures:** **9**, in addition to the HemaTRACE model and task-specialized variants.
+
+### 🧩 Ablation study coverage
+
+The HemaTRACE ablation suite includes controlled variants that remove, disable, or mask temporal/static branches, attention, observation-mask/time/count channels, treatment inputs, and hemoglobin trend features, as specified by the experiment configurations. These comparisons are **implemented study configurations**, not claimed quantitative findings.
+
+> [!TIP]
+> **Results are intentionally not fabricated here.** The README describes the pipeline and output tables; actual performance numbers, confidence intervals, figures, and rankings must come from a completed run using an authorized and versioned dataset.
+
+---
+
+## Quick start
+
+### ① Clone and create an environment
 
 ```bash
+git clone https://github.com/deepanshubaghel/HemaTRACE.git
+cd HemaTRACE
+
 python -m venv .venv
-# Linux/macOS:
-source .venv/bin/activate
-# Windows PowerShell:
-# .venv\Scripts\Activate.ps1
+source .venv/bin/activate                 # Linux / macOS
+# .venv\Scripts\Activate.ps1            # Windows PowerShell
 
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-Alternatively, using the included dependency file:
+**Prerequisites:** Python **3.10+** and compatible dependency wheels (Python 3.11/3.12 recommended in the source documentation). A **CUDA-capable GPU** is recommended for the full research pipeline, together with sufficient RAM and storage for large CSV extracts.
 
-```bash
-python -m pip install -r requirements.txt
-python -m pip install -e . --no-deps
-```
+**PyTorch/CUDA:** use an appropriate CUDA-enabled PyTorch wheel from the [official PyTorch installer](https://pytorch.org/get-started/locally/) if GPU acceleration is required. Installing a generic `torch` dependency alone does not guarantee CUDA support.
 
-For all originally optional scientific and boosted-tree packages:
+### ② Obtain authorized MIMIC-IV data
 
-```bash
-python -m pip install -e '.[all]'
-# Or, after installing the base requirements:
-python -m pip install -r requirements-optional.txt
-```
-
-For tests:
-
-```bash
-python -m pip install -e '.[dev]'
-```
-
-**PyTorch GPU builds:** install the wheel appropriate to your CUDA driver using the official PyTorch installation instructions before `pip install -e .`. The generic `torch` requirement does not guarantee CUDA availability. Optional **LightGBM** or **XGBoost** changes the learner selected by the original tabular fallback logic; for strict experiment reproduction, record the installed versions and whether they were present.
-
-## 5. Input dataset layout
-
-Place **your own authorized** raw files in these directories (case-sensitive on Linux):
-
-```text
-Dataset/Mimic4/
-├── hosp/
-│   ├── patients.csv                [required]
-│   ├── admissions.csv              [required]
-│   ├── labevents.csv               [required]
-│   ├── d_labitems.csv              [required]
-│   ├── diagnoses_icd.csv           [optional]
-│   ├── d_icd_diagnoses.csv         [optional]
-│   ├── prescriptions.csv          [optional]
-│   ├── pharmacy.csv               [optional]
-│   ├── emar.csv                   [optional]
-│   └── emar_detail.csv            [optional]
-└── icu/
-    ├── icustays.csv                [required]
-    ├── chartevents.csv             [required]
-    ├── d_items.csv                 [required]
-    ├── inputevents.csv             [required]
-    └── procedureevents.csv         [optional]
-```
-
-The code reads the standard identifier/time/measurement columns by name (e.g., `subject_id`, `hadm_id`, `stay_id`, `itemid`, `charttime`, `valuenum`, `intime`). Item maps are curated from the raw dictionary tables during each run. Check filename presence without running any model:
+Complete PhysioNet credentialing and access requirements (see [Dataset access](#dataset-access)). Place the required, uncompressed `.csv` files under `Dataset/Mimic4/`, or configure `DATA_ROOT`/`MIMIC_SUBDIR` for your authorized external storage path.
 
 ```bash
 python scripts/check_data.py
-# or check a different location:
-python scripts/check_data.py --root /path/to/Mimic4
+# To check an alternate MIMIC-IV root without changing data locations:
+python scripts/check_data.py --root /secure/path/to/Mimic4
 ```
 
-Note that the checker verifies filenames only. The pipeline's own audit and subsequent CSV operations enforce the input requirements during execution. `Mimic4` is the source-script's exact folder convention and is not renamed to `MIMIC-IV` by this refactor.
+**Note:** the checker verifies expected filenames, not the entire dataset schema or clinical content.
 
-## 6. How to run
-
-From the repository root, after placing the raw CSVs:
+### ③ Run the complete pipeline
 
 ```bash
 python main.py
 ```
 
-The installed-package alternatives run the **same** `main()`:
+Equivalent installed entry points:
 
 ```bash
 python -m hematrace
@@ -215,72 +279,243 @@ python -m hematrace
 hematrace-run
 ```
 
-No old Step 2/3/4/4D outputs, predictions, NPZ arrays, or checkpoints are needed. Every full run starts with the raw MIMIC-IV CSVs and creates a timestamped result directory. The run is deliberately comprehensive: it trains tabular and temporal predictors, onset refinement, fusion, the ablation set, and DL comparator models and writes figures/reports. It is not a quick single-model inference command.
+> [!WARNING]
+> This starts a **full multi-stage research experiment**, not a lightweight pretrained-model prediction. It includes event extraction, feature construction, several training families, comparisons, ablations, statistical evaluation, and figure generation. Runtime and resource requirements depend on the dataset, configuration, and hardware.
 
-### Fast debug mode (optional)
+<details>
+<summary><b>⚙️ Alternative installation and development dependencies</b></summary>
 
-The source includes a limited-data development flag. To use it, edit **`src/hematrace/config.py`**, keeping the remaining settings unchanged:
+```bash
+# Install from explicit runtime requirements
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
+
+# Optional boosting and statistics packages
+python -m pip install -r requirements-optional.txt
+# or: python -m pip install -e '.[all]'
+
+# Development / testing dependencies
+python -m pip install -r requirements-dev.txt
+# or: python -m pip install -e '.[dev]'
+```
+
+The original tabular fallback logic may select different learners depending on the availability of LightGBM/XGBoost. Record the installed environment when reproducing experiments.
+
+</details>
+
+---
+
+## Dataset access
+
+### 🔐 MIMIC-IV: controlled-access clinical research data
+
+This project is designed for **[MIMIC-IV](https://physionet.org/content/mimiciv/)**, a large de-identified electronic health record resource originating from Beth Israel Deaconess Medical Center and provided through **PhysioNet**. It includes information such as ICU stays, hospital admissions, laboratory events, clinical observations, and treatments.
+
+| Official resource | Link |
+|:--|:--|
+| **MIMIC-IV dataset (all releases)** | [physionet.org/content/mimiciv/](https://physionet.org/content/mimiciv/) |
+| **MIMIC-IV v3.1 (citation example)** | [physionet.org/content/mimiciv/3.1/](https://physionet.org/content/mimiciv/3.1/) |
+| **MIMIC documentation** | [mimic.mit.edu](https://mimic.mit.edu/) |
+| **PhysioNet credentialing/training** | [PhysioNet](https://physionet.org/) |
+
+**Access requirements:** Register with PhysioNet, meet its credentialing and required human-subjects training requirements (including **CITI Data or Specimens Only Research**, when applicable to the selected release), and sign the required dataset Data Use Agreement (DUA). The **official dataset page controls the current requirements**.
+
+> [!CAUTION]
+> **No MIMIC-IV records are shipped here.** Raw clinical data, patient-level features, extracted event CSVs, per-patient predictions, and derived checkpoints must not be uploaded to public source repositories. PhysioNet specifically advises treating derived datasets and models as potentially sensitive and distributing them, if appropriate, under the applicable credentialed-access requirements.
+
+### 📂 Required raw CSV layout
+
+```text
+Dataset/
+└── Mimic4/
+    ├── hosp/
+    │   ├── patients.csv          ← required
+    │   ├── admissions.csv        ← required
+    │   ├── labevents.csv         ← required
+    │   └── d_labitems.csv        ← required
+    └── icu/
+        ├── icustays.csv          ← required
+        ├── chartevents.csv       ← required
+        ├── d_items.csv           ← required
+        └── inputevents.csv       ← required
+```
+
+Additional tables inspected by the file audit include hospital diagnoses, diagnosis dictionaries, prescriptions, pharmacy, eMAR, eMAR details, and ICU procedure events. See [`docs/DATA_AND_TARGETS.md`](docs/DATA_AND_TARGETS.md).
+
+The pipeline **expects uncompressed `.csv` files**; `.csv.gz` files are not read directly by the CSV reader. On case-sensitive filesystems, preserve the exact `Dataset/Mimic4/hosp/` and `Dataset/Mimic4/icu/` naming unless you intentionally configure another location.
+
+**Using an existing HPC dataset:** You do **not** need to copy the data inside the GitHub repository. Update `DATA_ROOT` and `MIMIC_SUBDIR` in `src/hematrace/config.py` to point to permitted secured storage. Avoid committing machine-specific absolute paths.
+
+---
+
+## Repository structure
+
+```text
+HemaTRACE/
+├── README.md                         📘 Project documentation
+├── LICENSE                           ⚖️ MIT license
+├── main.py                           ▶️ Full pipeline entry point
+├── pyproject.toml                    📦 Packaging and CLI
+├── requirements.txt                 📦 Runtime dependencies
+├── requirements-optional.txt        📦 Optional research packages
+├── requirements-dev.txt             🧪 Development/test dependencies
+├── Makefile
+├── MANIFEST.in
+├── .gitignore                        🔒 Local-data and artifact exclusions
+│
+├── src/hematrace/
+│   ├── __init__.py
+│   ├── __main__.py                   python -m hematrace
+│   ├── config.py                     Configuration and result paths
+│   ├── pipeline.py                   Full experiment orchestration
+│   ├── utils.py                      Helpers, serialization, seeds
+│   ├── metrics.py                    Regression/classification metrics
+│   ├── optional_dependencies.py      Optional package fallbacks
+│   ├── data/
+│   │   ├── cohort.py                 Adult ICU cohort and raw audit
+│   │   ├── events.py                 Chunked MIMIC-IV extraction
+│   │   ├── features.py               Labels, features, splits, tensors
+│   │   └── item_maps.py              Curated clinical item mappings
+│   ├── models/
+│   │   ├── tabular.py                Conventional predictors
+│   │   ├── temporal.py               Temporal multitask network
+│   │   └── fusion.py                 Calibration and fusion
+│   ├── comparisons/
+│   │   └── deep_learning.py          Nine deep-learning comparators
+│   ├── studies/
+│   │   └── ablation.py               Ablation configurations
+│   ├── evaluation/
+│   │   ├── statistics.py             Statistical analyses
+│   │   └── explainability.py         XAI and visualizations
+│   └── reports/
+│       └── complexity.py             Complexity / manuscript artifacts
+│
+├── scripts/
+│   └── check_data.py                 Dataset filename audit
+├── tests/                            Synthetic, data-free smoke tests
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── DATA_AND_TARGETS.md
+    └── REPRODUCIBILITY.md
+```
+
+The `Dataset/` input tree and `HemaTrace_results/` output tree are **local/runtime resources**, not files to publish as source code. The output directories are created automatically during runs.
+
+---
+
+## Configuration
+
+HemaTRACE configuration is defined in `src/hematrace/config.py` (`CFG` dataclass). The table is a compact overview; the full configuration defines additional loss weights, fine-tuning controls, bootstrap settings, and plotting parameters.
+
+| Category | Parameter | Default |
+|:--|:--|:--|
+| **Dataset** | `DATA_ROOT`, `MIMIC_SUBDIR` | `Dataset`, `Mimic4` |
+| **Outputs** | `OUT_ROOT`, `PROJECT_NAME` | `HemaTrace_results`, `HemaTRACE_MANUSCRIPT` |
+| **Temporal windows** | Input / target | `0–24 h` / `24–72 h` |
+| **Sequence** | `BIN_SIZE_HOURS`, `N_BINS` | `4.0`, `6` |
+| **Split** | `TRAIN_FRAC`, `VAL_FRAC`, `TEST_FRAC` | `0.70`, `0.10`, `0.20` |
+| **Seed** | `RANDOM_STATE` | `42` |
+| **Severe cutoff** | `SEVERE_HB_THRESHOLD` | `8.0` |
+| **Anemia cutoffs** | Male / female | `13.0` / `12.0` |
+| **Training** | `MAX_EPOCHS`, `PATIENCE` | `80`, `12` |
+| **Batching** | `BATCH_SIZE`, `NUM_WORKERS` | `512`, `12` |
+| **Optimization** | `LR`, `WEIGHT_DECAY` | `8e-4`, `1e-4` |
+| **Temporal network** | Embedding / GRU hidden | `128` / `128` |
+| **Static network** | Hidden / embedding | `128` / `64` |
+| **Shared network** | Hidden / dropout | `192` / `0.30` |
+| **Onset specialization** | Fine-tuning epochs | `35` |
+| **Statistics** | `BOOTSTRAP_N` | `1000` |
+| **Explainability** | `XAI_MAX_SAMPLES`, `DPI` | `2000`, `300` |
+| **Debug mode** | `FAST_DEBUG` | `False` |
+
+**Large CSV chunk sizes:** `CHUNKSIZE_LABEVENTS = 2,000,000`, `CHUNKSIZE_CHARTEVENTS = 2,000,000`, and `CHUNKSIZE_INPUTEVENTS = 1,000,000`.
+
+> [!IMPORTANT]
+> Result directories are initialized **when the configuration module is imported**. Edit path settings in `CFG` **before launching Python**, rather than changing `cfg` after import. Run from the repository root when using relative paths.
+
+<details>
+<summary><b>⚡ Development-only fast debug mode</b></summary>
+
+In `src/hematrace/config.py`:
 
 ```python
 FAST_DEBUG: bool = True
 ```
 
-Default debug settings are `FAST_DEBUG_MAX_SUBJECTS=3000`, `FAST_DEBUG_MAX_CHUNKS=2`, and `FAST_DEBUG_BOOTSTRAP_N=50`. Because only the first two raw chunks are processed, debug outcomes and class rates may be unrepresentative, and small/debug splits may produce classes insufficient for all training or evaluation stages. **Fast debug mode is not a validated end-to-end miniature dataset.** Reset `FAST_DEBUG=False` for final research runs.
+Existing source defaults: `FAST_DEBUG_MAX_SUBJECTS = 3000`, `FAST_DEBUG_MAX_CHUNKS = 2`, and `FAST_DEBUG_BOOTSTRAP_N = 50`.
 
-## 7. Configuration
+**Warning:** debug processing samples only a limited number of early input chunks. It is not a validated miniature cohort; insufficient class counts can cause downstream training/evaluation stages to fail. Use `FAST_DEBUG = False` for research experiments.
 
-Original configuration lives in **`src/hematrace/config.py`** as the unchanged `CFG` dataclass plus module-wide output paths. These are the **default values in the uploaded code**:
+</details>
 
-| Setting | Value | Description |
-| --- | --- | --- |
-| `DATA_ROOT` / `MIMIC_SUBDIR` | `Dataset` / `Mimic4` | Relative raw data root |
-| `OUT_ROOT` / `PROJECT_NAME` | `HemaTrace_results` / `HemaTRACE_MANUSCRIPT` | Output location |
-| `INPUT_START_HOURS`, `INPUT_END_HOURS` | `0.0`, `24.0` | Input event window |
-| `TARGET_START_HOURS`, `TARGET_END_HOURS` | `24.0`, `72.0` | Outcome observation window |
-| `BIN_SIZE_HOURS`, `N_BINS` | `4.0`, `6` | Temporal discretization |
-| `TRAIN_FRAC`, `VAL_FRAC`, `TEST_FRAC` | `0.70`, `0.10`, `0.20` | Subject-level split |
-| `RANDOM_STATE` | `42` | Random seed |
-| `SEVERE_HB_THRESHOLD` | `8.0` | Severe-anemia cutoff |
-| `MALE_ANEMIA_THRESHOLD`, `FEMALE_ANEMIA_THRESHOLD` | `13.0`, `12.0` | Source-script anemia cutoffs |
-| `CHUNKSIZE_LABEVENTS`, `CHUNKSIZE_CHARTEVENTS` | `2,000,000` each | CSV chunking |
-| `CHUNKSIZE_INPUTEVENTS` | `1,000,000` | ICU input chunking |
-| `MAX_EPOCHS`, `PATIENCE` | `80`, `12` | Main temporal training |
-| `BATCH_SIZE`, `NUM_WORKERS` | `512`, `12` | Main neural training dataloader |
-| `LR`, `WEIGHT_DECAY` | `8e-4`, `1e-4` | Main temporal optimizer |
-| `GRU_HIDDEN_DIM`, `TEMPORAL_EMBED_DIM` | `128`, `128` | Temporal architecture |
-| `STATIC_HIDDEN_DIM`, `STATIC_EMBED_DIM` | `128`, `64` | Static branch |
-| `SHARED_HIDDEN_DIM`, `DROPOUT` | `192`, `0.30` | Shared prediction layers |
-| `ONSET_FINETUNE_EPOCHS` | `35` | Onset specialization |
-| `BOOTSTRAP_N` | `1000` | Confidence intervals |
-| `XAI_MAX_SAMPLES`, `DPI` | `2000`, `300` | XAI sample cap and figure dpi |
-| `FAST_DEBUG` | `False` | Small development mode |
+---
 
-Additional loss weights, bootstrap seed, threshold grid, fine-tune optimizer, and comparator/ablation options remain in their original source locations. The main script calls `save_json(asdict(cfg), LOGS_DIR / "final_config.json")`; the comparator also records its settings.
+## Execution and experiment workflow
 
-**Caution:** `RUN_DIR` and sibling paths are initialized when `hematrace.config` is first imported. If you change any `CFG` path setting, do so in the dataclass **before running Python** (not by mutating `cfg` after import). Run from the project root so relative paths resolve correctly.
+The full HemaTRACE experiment runs through the following research stages:
 
-## 8. Model families
+| Phase | Research operation |
+|:--|:--|
+| **01** | Inspect required and optional raw dataset tables |
+| **02** | Construct adult ICU cohort and future hemoglobin targets |
+| **03** | Create subject-disjoint train / validation / test partitions |
+| **04** | Build curated MIMIC item maps |
+| **05** | Extract laboratory, chart, and input events from raw CSVs |
+| **06** | Build early-window aggregates and six-bin temporal tensors |
+| **07** | Fit tabular regression/classification baselines |
+| **08** | Train HemaTRACE temporal multitask model |
+| **09** | Fine-tune new-onset-anemia specialization |
+| **10** | Fit validation-based probability calibration and prediction fusion |
+| **11** | Evaluate bootstrap CIs, paired tests, threshold selection, and subgroups |
+| **12** | Generate XAI figures, comparison/ablation results, complexity analysis, and publication-oriented artifacts |
 
-The project includes the source implementation of:
+No previous Step 2/3/4/4D outputs, predictions, temporal NPZ files, or saved models are required by the primary raw-data pipeline.
 
-1. **Tabular models:** numerical/categorical preprocessing, strict feature selection, baseline regression/classification with original LightGBM/XGBoost/hist-gradient-boosting fallback.
-2. **HemaTRACE-Temporal:** temporal value/mask/delta/count inputs, GRU, attention pooling, a static-data branch, and multitask regression/severe-anemia/onset heads.
-3. **HemaTRACE-OnsetSpecialized:** fine-tunes the onset objective from the learned temporal model.
-4. **HemaTRACE-Fusion:** temperature calibration and validation-trained combination of predictions.
-5. **Deep-learning comparators:** static MLP, temporal-flatten MLP, 1D CNN, LSTM, GRU, BiGRU, attention-based BiLSTM, Transformer encoder, TCN.
-6. **Ablation study:** retrained variants that remove or mask temporal/static branches, attention, temporal data channels, treatment features, or hemoglobin trend features as defined in the original ablation configuration.
+---
 
-Comparator extensions calculate timing/size/parameter estimates and manuscript-friendly visual comparisons. Refer to [Architecture](docs/ARCHITECTURE.md) for the source files of each stage.
+## Evaluation protocol
 
-## 9. Evaluation and generated outputs
+### 📐 Outcome-specific metrics
 
-The **actual directory naming from `CFG`** is:
+| Task | Evaluation measures |
+|:--|:--|
+| **Hemoglobin regression** | MAE ↓, RMSE ↓, R² ↑, Spearman correlation ↑ (if SciPy available) |
+| **Severe / onset classification** | AUROC ↑, AUPRC ↑, macro F1 ↑, sensitivity ↑, specificity ↑, accuracy ↑ |
+| **Calibration** | Brier score ↓, expected calibration error (ECE) ↓, calibration tables/plots |
+| **Statistical comparison** | Bootstrap confidence intervals, paired bootstrap analyses, McNemar tests when available |
+| **Robustness / interpretability** | Subgroup metrics, ablation experiments, feature attribution, decision-curve / XAI visualizations |
+| **Computational analysis** | Model parameters, computational complexity descriptors, runtime summaries |
+
+Arrows indicate the **preferred metric direction**, not observed study results.
+
+### 🛡️ Split integrity and leakage controls
+
+```mermaid
+flowchart LR
+    S[Unique subject IDs] --> R[Subject-level random split]
+    R --> T[Train<br/>70% of subjects]
+    R --> V[Validation<br/>10% of subjects]
+    R --> E[Test<br/>20% of subjects]
+    T --> F[Fit model parameters]
+    V --> C[Select thresholds / calibrate / fuse]
+    E --> H[Held-out reporting]
+```
+
+HemaTRACE splits on `subject_id` to prevent multiple ICU stays from the same patient from crossing partitions. Predictor construction is confined to the first **24 hours**; the selected temporal-model static features exclude raw future-window, discharge/death, and total-LOS fields. Calibration and fusion are fitted using validation data, with test data reserved for held-out reporting.
+
+**Interpretation caveat:** These safeguards do not eliminate every possible form of cohort-specific bias or a substitute for independent clinical/methodological validation.
+
+---
+
+## Output artifacts
+
+Each full experiment creates a timestamped output directory using the **HemaTRACE run configuration**:
 
 ```text
 HemaTrace_results/
 └── HemaTRACE_MANUSCRIPT/
     └── T_run_YYYY-MM-DD_at_HH-MM-SS/
-        ├── data/                    # Cohort, splits, temporal NPZ, predictions
+        ├── data/                      Cohorts, splits, tensors, predictions
         ├── models/
         │   ├── tabular/
         │   ├── temporal/
@@ -288,98 +523,172 @@ HemaTrace_results/
         │   ├── fusion/
         │   ├── ablation/
         │   └── dl_comparators/
-        ├── tables/                  # CSV tabulation of study outputs
-        ├── figures/
-        │   ├── png/
-        │   └── pdf/
-        ├── xai/                     # Explainability artifacts
-        ├── reports/                 # JSON and combined PDFs
-        ├── logs/                    # Configuration and logs
-        ├── tmp_filtered_events/     # Filtered event CSV intermediates
-        └── manuscript/             # Manuscript tables, figures, reports
+        ├── tables/                    Metrics / cohorts / significance
+        ├── figures/{png,pdf}/         Publication figures
+        ├── xai/                       Explainability artifacts
+        ├── reports/                   Summary JSON / combined PDF
+        ├── logs/                      Run configuration
+        ├── tmp_filtered_events/       Sensitive intermediate CSVs
+        └── manuscript/                Manuscript figures and tables
 ```
 
-Representative outputs (all use original names):
+### 📄 Key generated research artifacts
 
-| Relative to run directory | Contents |
-| --- | --- |
-| `logs/final_config.json` | Config snapshot |
-| `tables/final_raw_file_audit.csv` | Input file audit |
-| `tables/final_cohort_flow.csv` | Cohort selection summary |
-| `data/final_cohort_all.csv` | Final cohort and targets |
-| `data/final_train.csv`, `final_validation.csv`, `final_test.csv` | Subject-disjoint sets |
-| `data/temporal_train.npz`, `temporal_validation.npz`, `temporal_test.npz` | Neural tensors |
-| `tables/final_temporal_feature_names.csv` | Ordered temporal feature names |
-| `tables/final_all_model_metrics.csv` | Primary model-wise metrics |
-| `tables/final_validation_tuned_thresholds.csv` | Chosen validation thresholds |
+| Artifact | Purpose |
+|:--|:--|
+| `logs/final_config.json` | Saved run configuration |
+| `tables/final_raw_file_audit.csv` | Required-file inspection |
+| `tables/final_cohort_flow.csv` | Cohort filtering/flow summary |
+| `data/final_cohort_all.csv` | Study cohort and targets (restricted research artifact) |
+| `data/final_{train,validation,test}.csv` | Subject-disjoint cohorts |
+| `data/temporal_{train,validation,test}.npz` | Neural input arrays |
+| `tables/final_all_model_metrics.csv` | Main model evaluation table |
+| `tables/final_validation_tuned_thresholds.csv` | Validation-selected thresholds |
 | `tables/final_bootstrap_ci.csv` | Bootstrap confidence intervals |
-| `tables/final_paired_bootstrap_tests.csv` | Paired significance testing |
-| `tables/final_subgroup_metrics.csv` | Stratified metrics |
+| `tables/final_paired_bootstrap_tests.csv` | Paired comparison tests |
+| `tables/final_subgroup_metrics.csv` | Stratified analyses |
 | `tables/final_ablation_clean_table_for_manuscript.csv` | Ablation summary |
-| `tables/final_dl_model_comparison_manuscript_table.csv` | DL comparator summary |
-| `tables/final_model_complexity_analysis.csv` | Parameter/MAC/runtime complexity-related descriptors |
-| `reports/final_summary.json` | End-of-run artifact pointers and counts |
-| `reports/final_combined_all_figures.pdf` | Combined figure report |
-| `manuscript/` | Manuscript tables/figures from late source extension |
+| `tables/final_dl_model_comparison_manuscript_table.csv` | Deep-learning comparison summary |
+| `tables/final_model_complexity_analysis.csv` | Complexity summaries |
+| `reports/final_summary.json` | Summary of completed artifacts |
+| `reports/final_combined_all_figures.pdf` | Compiled figures |
+| `tables/final_output_manifest.csv` | Exported output inventory |
 
-Metrics include MAE, RMSE, R², Spearman (when SciPy is present), AUROC/AUPRC, accuracy, macro F1, sensitivity/specificity, Brier score, and ECE as appropriate to each task. Full output documentation is also exported **by the pipeline** to `tables/final_output_manifest.csv`.
+**Privacy note:** Files in `data/`, `models/`, `xai/`, intermediate-event directories, and some reports/figures may contain patient-level information or information derived from credentialed data. **Do not publish them without an explicit data-governance review and appropriate permission.**
 
-## 10. Reproducibility and leakage control
+---
 
-The source pipeline was organized, not redesigned. Important existing guards include:
+## Reproducibility and limitations
 
-- Subject-level disjoint train/validation/test assignment so repeated stays from the same patient stay in one partition.
-- Strict **0–24 h** predictor observation windows and **24–72 h** Hb outcomes.
-- Exclusion of raw discharge/death/outtime, total ICU LOS and `future_*` fields from selected predictive features.
-- Calibration and fusion trained/selected using validation predictions, with held-out test reporting.
-- Original thresholds, seed, preprocessing, and model hyperparameters retained.
+### ✅ Reproducibility design
 
-**Known limits inherited from the research source:** benchmark reproducibility depends on raw MIMIC-IV version, optional boosting libraries, Python/PyTorch environment, GPU kernels, class balance, and the dataset characteristics. Random seeding does not guarantee bitwise deterministic CUDA training (`cudnn.benchmark` remains enabled as in the original). A complete raw-data run and empirical equivalence check are **not included** because data is not bundled. For methodological and environment details, see [Reproducibility](docs/REPRODUCIBILITY.md).
+- Explicitly defined input/target windows, anemia thresholds, features, architectures, loss functions, random seeds, and evaluation routines.
+- Explicit runtime and optional dependencies, with documented conditional selection of tabular model backends.
+- Subject-level splitting and early-window versus future-outcome separation.
+- Calibration/fusion selection on the validation partition.
+- Integrated comparator experiments, ablations, complexity summaries, and manuscript-oriented plotting routines.
+- Consistent result-directory layout and artifact naming across experiments.
 
-## 11. Tests and code maintenance
+### ⚠️ Interpretation and validation boundaries
 
-After installing the project:
+- **No reported benchmark scores:** no validated MAE, AUROC, AUPRC, or model superiority is asserted without full empirical results.
+- **Publication status:** no peer-reviewed HemaTRACE paper, venue, or DOI is claimed in this README without an associated verified publication.
+- **No clinical validation:** the implementation is not an approved clinical prediction tool.
+- **No bitwise determinism guarantee:** `cudnn.benchmark` is enabled; random seeding does not guarantee identical GPU results across environments.
+- **No complete data run in the repository:** the restricted dataset is not included, and smoke tests do not establish end-to-end empirical reproducibility.
+
+**Reproduction checklist:** record the MIMIC-IV **version**, code **commit SHA**, Python/PyTorch/CUDA versions, optional boosting package versions, hardware, random seed, run configuration, and selected output manifest. Different dataset releases can change underlying identifiers and tables.
+
+For further details, see [`docs/REPRODUCIBILITY.md`](docs/REPRODUCIBILITY.md).
+
+---
+
+## Tests and troubleshooting
+
+### 🧪 Minimal code validation (no patient data)
 
 ```bash
+python -m pip install -e '.[dev]'
 python -m pytest -q
 python -m compileall -q src main.py
 python scripts/check_data.py
 ```
 
-The repository includes **no-data smoke tests** for metrics, model forward shapes, the subject split, and preservation of the late-comparison overrides. These tests are not a substitute for fully running the pipeline on authorized MIMIC-IV data.
+The included synthetic smoke tests cover metrics, model forward shapes, subject-level splitting, and comparator implementation selection. A successful smoke test is **not** an end-to-end MIMIC-IV research validation.
 
-To make research-code changes, use the stage-specific module, while keeping `src/hematrace/pipeline.py` as the single top-level orchestration. The numbered research pipeline stages are maintained as separate importable Python modules, rather than a single `~6000`-line file. The package can be installed with `pip install -e .` and called from standard Python imports, or via the `hematrace-run` console script.
+### 🩺 Common issues
 
-## 12. Troubleshooting
+| Problem | What to check |
+|:--|:--|
+| `MIMIC root not found` | Dataset path, working directory, and `CFG.DATA_ROOT`/`MIMIC_SUBDIR` |
+| Missing required MIMIC CSV | Exact `.csv` filenames and `python scripts/check_data.py` |
+| `ModuleNotFoundError: hematrace` | Activate the environment; run `python -m pip install -e .` |
+| CUDA unavailable | GPU allocation, driver, and compatible CUDA-enabled PyTorch |
+| Very slow training / out-of-memory | Available GPU RAM, system RAM, disk, data size, worker count |
+| DataLoader process failures | `NUM_WORKERS` relative to your compute environment |
+| Different tabular baseline selected | Optional LightGBM/XGBoost installation and package versions |
+| Unavailable AUC in debug runs | Insufficient positive/negative examples in small sampled data |
+| Incompatible CSV schema | Confirm MIMIC-IV release, headers, and decompression |
 
-| Symptom | Typical cause / action |
-| --- | --- |
-| `MIMIC root not found` | Run from repo root and place CSVs under `Dataset/Mimic4/`, or update `CFG.DATA_ROOT` before launch. |
-| `Missing required raw MIMIC files` | Run `python scripts/check_data.py`; original reader requires actual `.csv` filenames. |
-| `ModuleNotFoundError: hematrace` | Activate venv and run `python -m pip install -e .` or use the repository `python main.py`. |
-| No CUDA / extremely slow training | Check `torch.cuda.is_available()`, install the appropriate CUDA-enabled PyTorch build, and provision enough RAM/disk. |
-| DataLoader workers fail or exhaust resources | The unchanged default is `NUM_WORKERS=12`; change it in `CFG` to suit your environment. |
-| Different tabular learner selected | Check installed `lightgbm`/`xgboost` versions; the original fallback chooses available libraries. |
-| AUC undefined / small debug errors | Outcome class can be absent in small splits; use the full authorized cohort for research evaluation. |
-| CSV schema errors | Confirm compatible MIMIC-IV tables, required columns, proper CSV decompression and encoding. |
-| Memory issues | Original filtered-events and NPZ-building logic holds large arrays/frames in memory; reduce resource use only as a deliberate study code change. |
+---
 
-## 13. Dataset
+## Citation
 
-HemaTRACE is developed for research using the Medical Information Mart for Intensive Care IV (MIMIC-IV) database, a large-scale, de-identified electronic health record dataset maintained by the Massachusetts Institute of Technology (MIT) Laboratory for Computational Physiology and distributed through PhysioNet.
+### 📚 Dataset citation
 
-MIMIC-IV contains clinical information from patients treated at Beth Israel Deaconess Medical Center (BIDMC), including hospital admissions, intensive care unit stays, laboratory measurements, physiological observations, and treatment records.
+If your experiments use **MIMIC-IV v3.1**, cite the specific dataset release:
 
-Official dataset resources:
+> Johnson, A., Bulgarelli, L., Pollard, T., Gow, B., Moody, B., Horng, S., Celi, L. A., & Mark, R. (2024). **MIMIC-IV (version 3.1)**. *PhysioNet*. https://doi.org/10.13026/kpb9-mt58
 
-MIMIC-IV Dataset (PhysioNet): https://physionet.org/content/mimiciv/
+Also cite the original MIMIC-IV scientific paper:
 
-MIMIC-IV Version 3.1: https://physionet.org/content/mimiciv/3.1/
+> Johnson, A. E. W., Bulgarelli, L., Shen, L., et al. (2023). **MIMIC-IV, a freely accessible electronic health record dataset**. *Scientific Data*, **10**, Article 1. https://doi.org/10.1038/s41597-022-01899-x
 
-Official MIMIC Documentation: https://mimic.mit.edu/
+> [!IMPORTANT]
+> **Use the citation corresponding to the dataset version actually used.** **MIMIC-IV v3.1 is shown as a citation example**; do not assume it is the release used for a particular HemaTRACE run. Cite the exact dataset version employed in your experiments.
 
-PhysioNet: https://physionet.org/
+<details>
+<summary><b>📋 BibTeX — MIMIC-IV v3.1</b></summary>
 
-The MIMIC-IV dataset is not distributed with this repository. Researchers must obtain authorized access independently through PhysioNet before executing the HemaTRACE pipeline.
+```bibtex
+@article{PhysioNet-mimiciv-3.1,
+  author  = {Johnson, Alistair and Bulgarelli, Lucas and Pollard, Tom and
+             Gow, Brian and Moody, Benjamin and Horng, Steven and
+             Celi, Leo Anthony and Mark, Roger},
+  title   = {{MIMIC-IV}},
+  journal = {{PhysioNet}},
+  year    = {2024},
+  month   = oct,
+  note    = {Version 3.1},
+  doi     = {10.13026/kpb9-mt58},
+  url     = {https://doi.org/10.13026/kpb9-mt58}
+}
+```
 
+</details>
 
+### 🧾 Citing HemaTRACE
+
+**Please cite HemaTRACE** when using or extending this framework. Until an associated peer-reviewed publication or citable software archive is available, reference the **HemaTRACE GitHub repository** together with its **commit SHA or version tag** and **access date**. An official manuscript citation and BibTeX record can be added once the publication metadata are confirmed.
+
+**Repository:** [github.com/deepanshubaghel/HemaTRACE](https://github.com/deepanshubaghel/HemaTRACE)
+
+---
+
+## License, ethics, and responsible use
+
+### ⚖️ Software license vs. dataset permissions
+
+| Resource | Applicable terms |
+|:--|:--|
+| **HemaTRACE source code** | [MIT License](LICENSE), subject to the repository's licensing and code-ownership rights |
+| **MIMIC-IV database** | PhysioNet credentialed-access terms and applicable Data Use Agreement |
+| **Derived cohorts, patient-level outputs, and trained models** | Treat as potentially sensitive; follow PhysioNet requirements and institutional review before any sharing |
+
+The **MIT License does not grant permission to redistribute MIMIC-IV data** or override PhysioNet's DUA. Data access is **not** bundled with software access.
+
+### 🔒 Responsible research commitments
+
+- 🔐 Keep raw MIMIC-IV files and derived patient-level records in approved secure storage.
+- 🚫 Never upload patient-level content into public commits, issues, pull requests, screenshots, or support requests.
+- 🧾 Verify citation, dataset-release provenance, and local institutional approvals before dissemination.
+- 🩺 Do not represent HemaTRACE predictions as validated clinical advice or deploy them for patient management without appropriate independent validation, oversight, and approvals.
+- 🤝 When reusing the software, retain the relevant copyright and permission notice according to the MIT License.
+
+---
+
+## Documentation
+
+| Guide | Topics |
+|:--|:--|
+| [🏗️ Architecture](docs/ARCHITECTURE.md) | Modules, neural structure, and pipeline integration |
+| [🧬 Data & targets](docs/DATA_AND_TARGETS.md) | Cohort criteria, source tables, observation/label windows |
+| [🔁 Reproducibility](docs/REPRODUCIBILITY.md) | Validation setup, environment controls, limitations |
+
+**Contributions and research questions:** GitHub issues and pull requests can be used for **code-only** bug reports or improvements, without restricted records, hidden credentials, or clinical extracts.
+
+---
+
+<p align="center"><strong>HemaTRACE · Temporal learning for hemoglobin and anemia-related research in critical care</strong></p>
+<p align="center"><em>Reproducible code · Explicit prediction windows · Responsible handling of clinical data</em></p>
+<p align="center"><a href="#top">⬆ Back to top</a></p>
