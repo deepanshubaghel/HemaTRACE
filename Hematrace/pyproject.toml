@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hematrace"
+version = "1.0.0"
+description = "HemaTRACE: time-windowed ICU anemia prediction from raw MIMIC-IV"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24,<3",
+    "pandas>=2.0,<3",
+    "matplotlib>=3.7,<4",
+    "scikit-learn>=1.3,<2",
+    "torch>=2.1,<3",
+]
+
+[project.optional-dependencies]
+scientific = ["scipy>=1.10,<2", "statsmodels>=0.14,<1"]
+boosting = ["lightgbm>=4.0,<5", "xgboost>=2.0,<4"]
+all = [
+    "scipy>=1.10,<2",
+    "statsmodels>=0.14,<1",
+    "lightgbm>=4.0,<5",
+    "xgboost>=2.0,<4",
+]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+hematrace-run = "hematrace.pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["hematrace*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

@@ -1,0 +1,6 @@
+# Statistical and boosted-tree packages used when available.
+# If omitted, the original code falls back where implemented.
+scipy>=1.10,<2
+statsmodels>=0.14,<1
+lightgbm>=4.0,<5
+xgboost>=2.0,<4
