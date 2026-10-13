@@ -1,0 +1,37 @@
+# Python / tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Original restricted raw MIMIC-IV source data: do NOT commit it.
+Dataset/Mimic4/hosp/*
+Dataset/Mimic4/icu/*
+!Dataset/Mimic4/hosp/.gitkeep
+!Dataset/Mimic4/icu/.gitkeep
+
+# Generated outputs / intermediate artifacts / model weights.
+HemaTrace_results/
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.pkl
+*.pickle
+
+# Notebook and OS metadata
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
