@@ -1,6 +1,6 @@
 <a id="top"></a>
 
-<h1 align="center">🩸 HemaTRACE</h1>
+<h1 align="center">HemaTRACE</h1>
 
 <h3 align="center">Temporal Hemoglobin Forecasting &amp; Anemia Risk Assessment in Critical Care</h3>
 
