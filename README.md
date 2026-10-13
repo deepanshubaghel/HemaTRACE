@@ -364,10 +364,22 @@ To make research-code changes, use the stage-specific module, while keeping `src
 | CSV schema errors | Confirm compatible MIMIC-IV tables, required columns, proper CSV decompression and encoding. |
 | Memory issues | Original filtered-events and NPZ-building logic holds large arrays/frames in memory; reduce resource use only as a deliberate study code change. |
 
-## 13. Data access, citation, and use
+## 13. Dataset
 
-MIMIC-IV is a controlled clinical research dataset, not provided with this code. Researchers must complete the appropriate access and data-use process, cite the correct **MIMIC-IV dataset version** and its creators according to its official documentation, and protect derived patient-level data and checkpoints. Never upload source or intermediate patient records into public issues or commits.
+HemaTRACE is developed for research using the Medical Information Mart for Intensive Care IV (MIMIC-IV) database, a large-scale, de-identified electronic health record dataset maintained by the Massachusetts Institute of Technology (MIT) Laboratory for Computational Physiology and distributed through PhysioNet.
 
-The project title and research methods are from the uploaded script; no study publication citation or author license was supplied. Add your own manuscript/authorship, version-specific dataset citation, and project license **only when you have the rights and bibliographic details**. No license is presumed by this ZIP.
+MIMIC-IV contains clinical information from patients treated at Beth Israel Deaconess Medical Center (BIDMC), including hospital admissions, intensive care unit stays, laboratory measurements, physiological observations, and treatment records.
+
+Official dataset resources:
+
+MIMIC-IV Dataset (PhysioNet): https://physionet.org/content/mimiciv/
+
+MIMIC-IV Version 3.1: https://physionet.org/content/mimiciv/3.1/
+
+Official MIMIC Documentation: https://mimic.mit.edu/
+
+PhysioNet: https://physionet.org/
+
+The MIMIC-IV dataset is not distributed with this repository. Researchers must obtain authorized access independently through PhysioNet before executing the HemaTRACE pipeline.
 
 
