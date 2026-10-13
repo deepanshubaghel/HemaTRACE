@@ -20,7 +20,7 @@ HemaTRACE predicts future hemoglobin and anemia outcomes for adult ICU stays usi
 - [10. Reproducibility and leakage control](#10-reproducibility-and-leakage-control)
 - [11. Tests and code maintenance](#11-tests-and-code-maintenance)
 - [12. Troubleshooting](#12-troubleshooting)
-- [13. Data access, citation, and use](#13-data-access-citation-and-use)
+- [13. Dataset](#13-data-access-citation-and-use)
   
 ## 1. Project layout
 
