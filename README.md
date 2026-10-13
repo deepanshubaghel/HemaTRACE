@@ -21,8 +21,7 @@ HemaTRACE predicts future hemoglobin and anemia outcomes for adult ICU stays usi
 - [11. Tests and code maintenance](#11-tests-and-code-maintenance)
 - [12. Troubleshooting](#12-troubleshooting)
 - [13. Data access, citation, and use](#13-data-access-citation-and-use)
-- [14. Refactor provenance](#14-refactor-provenance)
-
+  
 ## 1. Project layout
 
 ```text
@@ -74,8 +73,7 @@ hematrace/
     ├── ARCHITECTURE.md
     ├── DATA_AND_TARGETS.md
     ├── REPRODUCIBILITY.md
-    ├── REFACTOR_VERIFICATION.md
-    └── SOURCE_SHA256.txt
+
 ```
 
 `HemaTrace_results/` is created automatically when the pipeline modules are imported and is excluded from Git. No original output datasets or previously trained models are loaded by the primary pipeline.
@@ -372,11 +370,4 @@ MIMIC-IV is a controlled clinical research dataset, not provided with this code.
 
 The project title and research methods are from the uploaded script; no study publication citation or author license was supplied. Add your own manuscript/authorship, version-specific dataset citation, and project license **only when you have the rights and bibliographic details**. No license is presumed by this ZIP.
 
-## 14. Refactor provenance
 
-- Source: `HemaTraceF(20261013-050659).py` (file SHA-256 stored in [`docs/SOURCE_SHA256.txt`](docs/SOURCE_SHA256.txt)).
-- The original script's **178 function/class definition occurrences** across **174 distinct names** are present unchanged at the AST definition level, including the later comparator and plotting overrides; the definitions now live in topic-specific importable modules.
-- In addition to original code, the ZIP adds packaging, explicit module imports, entry points, docs, a filename checker, and synthetic tests. It does **not** redistribute the submitted monolithic script as another script to run.
-- This preservation claim is based on structure/source-level verification plus synthetic smoke tests, **not** a completed training experiment or a proof of identical numerical outputs on MIMIC-IV.
-
-See [Refactor verification](docs/REFACTOR_VERIFICATION.md) for precise scope.
