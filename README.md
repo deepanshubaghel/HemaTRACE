@@ -33,7 +33,7 @@
 ---
 
 > [!IMPORTANT]
-> **Research use only.** HemaTRACE is a research implementation—not a validated clinical decision-support system or medical device. It must **not** be used independently to guide patient treatment, transfusion, or clinical management. This repository does **not** distribute MIMIC-IV records, patient-level derivatives, model checkpoints, trained weights, or empirical benchmark results.
+> **Research use only.** HemaTRACE is a research implementation not a validated clinical decision-support system or medical device. It must **not** be used independently to guide patient treatment, transfusion, or clinical management. This repository does **not** distribute MIMIC-IV records, patient-level derivatives, model checkpoints, trained weights, or empirical benchmark results.
 
 ## ✨ At a glance
 
